@@ -10,6 +10,7 @@ from matplotlib.pyplot import plot,show,figure,gca
 from numpy.random import normal,randint,random
 from model import Denoise,UNet2
 from data import RndData
+from scipy import signal
 
 def main():
     """
@@ -52,7 +53,7 @@ def main():
     #criterion = nn.L1Loss()
     optimizer = optim.SGD(model.parameters(), lr = 0.001)
             
-    gen_curve = RndData(256,batch_size)
+    gen_curve = RndData(1,batch_size)
 
     checkpoint = torch.load('checkpoint_linear.pth')
     model.load_state_dict(checkpoint['model_state_dict'],strict=False)
@@ -76,6 +77,8 @@ def main():
         y = y.to(device)
 
         outputs = model(x)
+
+
         print('out shape:',outputs.shape)
 
         loss = (criterion(outputs,y))
@@ -92,12 +95,17 @@ def main():
     'loss': loss},
     'checkpoint_linear.pth'
     )
+    
 
+    #gen_curve = RndData(1,6)
+
+    #x,y = next(gen_curve)
+    #x,y0,y,z,n0,n1 = gen_curve.gen_curve()
 
     x = x.detach().cpu().numpy()
-    print(x.shape)
+    #print(x.shape)
     x = x[:,:,offset:-offset]
-    print(x.shape)
+    #print(x.shape)
     x = x.reshape(-1,2048)
 
     y = y.detach().cpu().numpy()
@@ -113,10 +121,33 @@ def main():
     figure()
     plot(y[:5].T)
 
+
     figure()
     plot(outputs[:5].T)
+    
     gca().set_prop_cycle(None)
     plot(y[:5].T,'--')
+
+    win = signal.windows.hann(16)
+
+    for i in range(5):
+        filtered = signal.convolve(x[i], win, mode='same') / sum(win)
+        plot(filtered,'k--',lw=1)
+
+    win = signal.windows.gaussian(16,16)
+
+    for i in range(5):
+        filtered = signal.convolve(x[i], win, mode='same') / sum(win)
+        plot(filtered,'k:',lw=1)
+
+    for i in range(5):
+        filtered = signal.savgol_filter(x[i],9,3)
+        plot(filtered,'y-.',lw=1)
+
+    #for i in range(5):
+    #    filtered = signal.convolve(outputs[i], win2, mode='same') / sum(win)
+    #    plot(filtered,'k:',lw=1)
+
     show()
 
 if __name__ == '__main__':
